@@ -5,9 +5,9 @@ from jose import jwt
 from urllib.request import urlopen
 
 
-AUTH0_DOMAIN = 'udacity-fsnd.auth0.com'
+AUTH0_DOMAIN = 'mycoffeeshop.auth0.com'
 ALGORITHMS = ['RS256']
-API_AUDIENCE = 'dev'
+API_AUDIENCE = 'drinks'
 
 ## AuthError Exception
 '''
@@ -31,7 +31,27 @@ class AuthError(Exception):
     return the token part of the header
 '''
 def get_token_auth_header():
-   raise Exception('Not Implemented')
+    try:
+        token = request.headers.get('Authorization')
+        token_type = token.split(' ')[0]
+        if(token_type == 'Bearer' and len(token.split(' ')) == 2):
+            token = token.split(' ')[1]
+        elif(len(token.split(' ')) > 2):
+            raise AuthError({
+                'error' : 'Invalid header!',
+                'status_code' : 401
+            }, 401)
+        else:
+            raise AuthError({
+                'error' : 'Header malformed!',
+                'status_code' : 401
+            }, 401)
+        return token
+    except:
+        raise AuthError({
+                'error' : 'No authorization header!',
+                'status_code' : 401
+            }, 401) 
 
 '''
 @TODO implement check_permissions(permission, payload) method
@@ -45,7 +65,10 @@ def get_token_auth_header():
     return true otherwise
 '''
 def check_permissions(permission, payload):
-    raise Exception('Not Implemented')
+    try: 
+        permission in payload['permissions']
+    except:
+        raise AuthError({'error' : 'Not authorised to access','status_code' : 403}, 403)
 
 '''
 @TODO implement verify_decode_jwt(token) method
@@ -61,8 +84,44 @@ def check_permissions(permission, payload):
     !!NOTE urlopen has a common certificate error described here: https://stackoverflow.com/questions/50236117/scraping-ssl-certificate-verify-failed-error-for-http-en-wikipedia-org
 '''
 def verify_decode_jwt(token):
-    raise Exception('Not Implemented')
+    auth0_url_keys = urlopen(f'https://{AUTH0_DOMAIN}/.well-known/jwks.json')
+    keysStr = auth0_url_keys.read().decode('utf-8')
+    keysObj = json.loads(keysStr)
 
+    header_token = jwt.get_unverified_header(token)
+    rsa_key = {}
+
+    if 'kid' not in header_token:
+        raise AuthError({
+            'error' : 'Invalid Header',
+            'status_code' : 401
+        },401)
+    else : 
+        keys = keysObj['keys']
+        for key in keys:
+            if(key['kid'] == header_token['kid']):
+                rsa_key['kid'] = key['kid']
+                rsa_key['kty'] = key['kty']
+                rsa_key['use'] = key['use']
+                rsa_key['n'] = key['n']
+                rsa_key['e'] = key['e']
+        
+    if rsa_key:
+        try:
+            payload = jwt.decode(token, rsa_key, algorithms=ALGORITHMS,audience=API_AUDIENCE,issuer=f'https://{AUTH0_DOMAIN}/')
+            return payload
+        except jwt.ExpiredSignatureError:
+            raise AuthError({
+                'error': 'Token expired',
+                'status_code': 401
+            }, 401)
+        except jwt.JWTClaimsError:
+            raise AuthError({
+                'status_code': 401,
+                'error': 'Incorrect claims. Please, check the audience and issuer.'
+            }, 401)
+        except:
+            raise AuthError({'error' : 'Unable to parse header', 'status_code' : 400}, 400)
 '''
 @TODO implement @requires_auth(permission) decorator method
     @INPUTS
