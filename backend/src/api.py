@@ -27,7 +27,18 @@ CORS(app)
     returns status code 200 and json {"success": True, "drinks": drinks} where drinks is the list of drinks
         or appropriate status code indicating reason for failure
 '''
-
+@app.route('/drinks')
+def get_drinks():
+    try:
+        all_drinks = Drink.query.all()
+        drinks = [drink.short() for drink in all_drinks]
+        
+        return jsonify({
+            'success' : True,
+            'drinks' : drinks
+        })
+    except Exception:
+        abort(404)
 
 '''
 @TODO implement endpoint
@@ -37,6 +48,19 @@ CORS(app)
     returns status code 200 and json {"success": True, "drinks": drinks} where drinks is the list of drinks
         or appropriate status code indicating reason for failure
 '''
+@app.route('/drinks-detail')
+@requires_auth(permission='get:drinks-detail')
+def get_drinks_detail(payload):
+    
+    try:
+        get_drinks = Drink.query.all()
+        drinks = [drink.long() for drink in get_drinks]
+        return jsonify({
+            "success" : True,
+            "drinks" : drinks
+        })
+    except Exception as e:
+        abort(403)
 
 
 '''
@@ -48,7 +72,21 @@ CORS(app)
     returns status code 200 and json {"success": True, "drinks": drink} where drink an array containing only the newly created drink
         or appropriate status code indicating reason for failure
 '''
-
+@app.route('/drinks', methods=['POST'])
+@requires_auth(permission='post:drinks')
+def create_new_drink(payload):
+    title = request.get_json().get('title')
+    recipe = request.get_json().get('recipe')
+    drink = Drink(title=title,recipe=json.dumps(recipe))
+    try:
+        drink.insert()
+        return jsonify({
+            'success' : True,
+            'drinks' : drink.long()
+        })
+    except Exception as e:
+        print('Failed to create new drink!', e)
+        # abort(400)
 
 '''
 @TODO implement endpoint
@@ -97,14 +135,46 @@ def unprocessable(error):
                     }), 404
 
 '''
+@app.errorhandler(404)
+def not_found(error):
+    return jsonify({
+        "success" : False,
+        "error" : 404,
+        "message" : "Not found!"
+    }), 404
 
 '''
-@TODO implement error handler for 404
+Error handler for forbidden requests
+'''
+@app.errorhandler(403)
+def forbidden(error):
+    return jsonify({
+        "success" : False,
+        "error" : 403,
+        "message" : "Not allowed to make this request!"
+    }), 403
+
+'''
+@TODO implement error handler for 401
     error handler should conform to general task above 
 '''
-
+@app.errorhandler(401)
+def unauthorized(error):
+    return jsonify({
+        "success" : False,
+        "error" : 401,
+        "message" : "Not authorized!"
+    }), 401
 
 '''
 @TODO implement error handler for AuthError
     error handler should conform to general task above 
 '''
+@app.errorhandler(AuthError)
+def auth_error(error):
+    print("ERROR", getattr(error,'error'))
+    return jsonify({
+        "success" : False,
+        "message" : getattr(error,'error')['error'],
+        "code" : getattr(error,'error')['status_code']
+    })
