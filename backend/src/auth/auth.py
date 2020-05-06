@@ -33,20 +33,21 @@ class AuthError(Exception):
 def get_token_auth_header():
     try:
         token = request.headers.get('Authorization')
-        token_type = token.split(' ')[0]
-        if(token_type == 'Bearer' and len(token.split(' ')) == 2):
-            token = token.split(' ')[1]
-        elif(len(token.split(' ')) > 2):
-            raise AuthError({
-                'error' : 'Invalid header!',
-                'status_code' : 401
-            }, 401)
+        if token:
+            token_type = token.split(' ')[0]
+            if(token_type == 'Bearer' and len(token.split(' ')) == 2):
+                token = token.split(' ')[1]
+                return token
+            elif(len(token.split(' ')) > 2):
+                raise AuthError({
+                    'error' : 'Invalid header!',
+                    'status_code' : 401
+                }, 401)
         else:
             raise AuthError({
                 'error' : 'Header malformed!',
                 'status_code' : 401
-            }, 401)
-        return token
+            },401)
     except:
         raise AuthError({
                 'error' : 'No authorization header!',
