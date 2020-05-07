@@ -66,10 +66,10 @@ def get_token_auth_header():
     return true otherwise
 '''
 def check_permissions(permission, payload):
-    try: 
-        permission in payload['permissions']
-    except:
-        raise AuthError({'error' : 'Not authorised to access','status_code' : 403}, 403)
+    if permission not in payload['permissions']:
+        raise AuthError({'error' : 'Not authorised to access','status_code' : 401}, 401)
+    else:
+        return True
 
 '''
 @TODO implement verify_decode_jwt(token) method
