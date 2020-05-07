@@ -11,6 +11,15 @@ app = Flask(__name__)
 setup_db(app)
 CORS(app)
 
+# Allow CORS requests
+@app.after_request
+def after_request(response):
+    response.headers.add('Access-Control-Allow-Headers',
+                             'Content-Type,Authorization,true')
+    response.headers.add('Access-Control-Allow-Methods',
+                             'GET,PUT,POST,DELETE,OPTIONS')
+    return response
+
 '''
 @TODO uncomment the following line to initialize the datbase
 !! NOTE THIS WILL DROP ALL RECORDS AND START YOUR DB FROM SCRATCH
@@ -104,12 +113,20 @@ def update_drink(payload,id):
     body = request.get_json()
     try:
         drink = Drink.query.filter_by(id=id).one_or_none()
-        print(drink.title)
-        print(body)
-        # for key in body:
-            # print(drink[key])
-        # print('Updated drink', drink)
-    except:
+
+        # Update drink title
+        drink.title = body.get('title')
+
+        # Update drink recipe
+        drink.recipe = json.dumps(body.get('recipe'))
+        drink.update()
+
+        return jsonify({
+            "success" : True,
+            "drinks" : [drink.long()]
+        })
+    except Exception as e:
+        print('Exception thrown', e)
         abort(404)
 
 '''
@@ -146,7 +163,7 @@ def unprocessable(error):
                     "success": False, 
                     "error": 422,
                     "message": "unprocessable"
-                    }), 422
+                    }),422
 
 '''
 @TODO implement error handlers using the @app.errorhandler(error) decorator
@@ -164,7 +181,7 @@ def not_found(error):
         "success" : False,
         "error" : 404,
         "message" : "Not found!"
-    }), 404
+    }),404
 
 '''
 Error handler for forbidden requests
@@ -175,7 +192,7 @@ def forbidden(error):
         "success" : False,
         "error" : 403,
         "message" : "Not allowed to make this request!"
-    }), 403
+    }),403
 
 '''
 @TODO implement error handler for 401
@@ -187,7 +204,7 @@ def unauthorized(error):
         "success" : False,
         "error" : 401,
         "message" : "Not authorized!"
-    }), 401
+    }),401
 
 '''
 @TODO implement error handler for AuthError
