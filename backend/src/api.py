@@ -51,7 +51,6 @@ def get_drinks():
 @app.route('/drinks-detail')
 @requires_auth(permission='get:drinks-detail')
 def get_drinks_detail(payload):
-    
     try:
         get_drinks = Drink.query.all()
         drinks = [drink.long() for drink in get_drinks]
@@ -99,7 +98,19 @@ def create_new_drink(payload):
     returns status code 200 and json {"success": True, "drinks": drink} where drink an array containing only the updated drink
         or appropriate status code indicating reason for failure
 '''
-
+@app.route('/drinks/<int:id>', methods=['PATCH'])
+@requires_auth(permission='patch:drinks')
+def update_drink(payload,id):
+    body = request.get_json()
+    try:
+        drink = Drink.query.filter_by(id=id).one_or_none()
+        print(drink.title)
+        print(body)
+        # for key in body:
+            # print(drink[key])
+        # print('Updated drink', drink)
+    except:
+        abort(404)
 
 '''
 @TODO implement endpoint
@@ -111,6 +122,18 @@ def create_new_drink(payload):
     returns status code 200 and json {"success": True, "delete": id} where id is the id of the deleted record
         or appropriate status code indicating reason for failure
 '''
+@app.route('/drinks/<int:id>', methods=['DELETE'])
+@requires_auth(permission='delete:drinks')
+def delete_drink(payload,id):
+    try:
+        drink = Drink.query.filter_by(id=id).one_or_none()
+        drink.delete()
+        return jsonify({
+            "success" : True,
+            "delete" : id
+        })
+    except:
+        abort(404)
 
 
 ## Error Handling
@@ -172,9 +195,9 @@ def unauthorized(error):
 '''
 @app.errorhandler(AuthError)
 def auth_error(error):
-    print("ERROR", getattr(error,'error'))
+    err_status = getattr(error,'error')['status_code']
     return jsonify({
         "success" : False,
         "message" : getattr(error,'error')['error'],
-        "code" : getattr(error,'error')['status_code']
-    })
+        "status" : getattr(error,'error')['status_code']
+    }),err_status
